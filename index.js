@@ -1,19 +1,19 @@
-import { env } from 'node:process';
 import JiraClient from './JiraClient.js';
 import { extractJiraKeys } from './utils.js';
 
-export async function verifyConditions(pluginConfig, { logger }, envVars = env) {
+export async function verifyConditions(pluginConfig, context) {
+  const { logger, env } = context;
   const required = ['JIRA_HOST', 'JIRA_EMAIL', 'JIRA_API_TOKEN', 'JIRA_PROJECT'];
-  const missing = required.filter(name => !envVars[name]);
+  const missing = required.filter(name => !env[name]);
 
   if (missing.length) {
     throw new Error(`[semantic-release-jira] Missing environment variable : ${missing.join(', ')}`);
   }
 
   const jiraConfig = {
-    host: envVars.JIRA_HOST,
-    email: envVars.JIRA_EMAIL,
-    token: envVars.JIRA_API_TOKEN,
+    host: env.JIRA_HOST,
+    email: env.JIRA_EMAIL,
+    token: env.JIRA_API_TOKEN,
   };
 
   try {
@@ -24,20 +24,20 @@ export async function verifyConditions(pluginConfig, { logger }, envVars = env) 
   }
 }
 
-
-export async function publish(pluginConfig, context, envVars = env) {
+export async function publish(pluginConfig, context) {
   const {
     nextRelease: { version },
     commits,
     logger,
+    env,
   } = context;
 
   const jiraConfig = {
-    host: envVars.JIRA_HOST,
-    email: envVars.JIRA_EMAIL,
-    token: envVars.JIRA_API_TOKEN,
-    projectKey: envVars.JIRA_PROJECT,
-    ticketRegex: envVars.JIRA_TICKET_REGEX || '[A-Z]+-\\d+',
+    host: env.JIRA_HOST,
+    email: env.JIRA_EMAIL,
+    token: env.JIRA_API_TOKEN,
+    projectKey: env.JIRA_PROJECT,
+    ticketRegex: env.JIRA_TICKET_REGEX || '[A-Z]+-\\d+',
   };
 
   const jiraClient = new JiraClient(jiraConfig);
@@ -45,7 +45,7 @@ export async function publish(pluginConfig, context, envVars = env) {
   const jiraVersion = await jiraClient.ensureVersion({ name: version });
   logger.log(`[semantic-release-jira] Jira version « ${version} » ready (id=${jiraVersion.id})`);
 
-  const issueKeys =  extractJiraKeys(commits, jiraConfig.ticketRegex);
+  const issueKeys = extractJiraKeys(commits, jiraConfig.ticketRegex);
   if (!issueKeys.length) {
     logger.log('[semantic-release-jira] No Jira ticket detected.');
     return;
